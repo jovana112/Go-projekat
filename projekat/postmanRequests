@@ -1,0 +1,53 @@
+Koristili smo iste handler-e (GET,POST,DELETE) za pojedinacnu konfiguraciju i za grupu
+
+create configs and configs group
+
+POST http://localhost:8000/configs
+
+config
+
+[
+    {
+        "conf": {
+            "k1": "v1",
+            "k2": "v2"
+        }
+    }
+]
+
+------------
+group
+
+[
+    {
+        "conf": {
+            "k1": "v1",
+            "k2": "v2"
+        }
+    },
+    {
+        "conf": {
+            "k3": "v3",
+            "k4": "v4"
+        }
+    }
+]
+
+GET http://localhost:8000/configs
+
+GET http://localhost:8000/configs/1f37ee9b-bced-4838-81f1-c7f54e84ba78
+
+DELETE http://localhost:8000/configs/1f37ee9b-bced-4838-81f1-c7f54e84ba78
+
+
+PATCH (extend config groups)
+http://localhost:8000/configs/38c4c241-6819-4689-92eb-fe73aa943362
+
+[
+    {
+        "conf": {
+            "k5": "v5",
+            "k6": "v6"
+        }
+    }
+]
