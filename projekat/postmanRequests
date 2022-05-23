@@ -51,3 +51,21 @@ http://localhost:8000/configs/38c4c241-6819-4689-92eb-fe73aa943362
         }
     }
 ]
+
+
+
+
+GET http://localhost:8000/groups
+{
+    "configs": [
+        {
+            "k9": "v5",
+            "k0": "v6"
+        },
+        {
+            "k9": "v5",
+            "k0": "v6"
+        }
+    ],
+     "version": "v1"
+}

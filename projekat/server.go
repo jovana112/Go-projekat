@@ -3,15 +3,18 @@ package main
 import (
 	"errors"
 	"github.com/gorilla/mux"
+	cs "github.com/jovana112/Go-Projekat/projekat/configstore"
 	"mime"
 	"net/http"
+	"net/url"
 )
 
-type Servis struct {
-	Data map[string][]*Config
+type Service struct {
+	store *cs.ConfigStore
 }
 
-func (ts *Servis) createConfigHandler(w http.ResponseWriter, req *http.Request) {
+func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request) {
+
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -25,47 +28,178 @@ func (ts *Servis) createConfigHandler(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	rt, err := decodeBody(req.Body)
+	rt, err := decodeBodyForConfig(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	id := createId()
-	for _, v := range rt {
-		ts.Data[id] = append(ts.Data[id], v)
+	conf, err := ts.store.CreateConfig(rt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	renderJSON(w, rt)
+	renderJSON(w, conf)
 }
 
-func (ts *Servis) getConfigHandler(w http.ResponseWriter, req *http.Request) {
+func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["id"]
-	configs, ok := ts.Data[id]
-	if !ok {
+	version := mux.Vars(req)["version"]
+	configs, ok := ts.store.GetConfig(id, version)
+	if ok != nil {
 		err := errors.New("key not found")
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	renderJSON(w, configs)
 }
-func (ts *Servis) deleteConfigHandler(w http.ResponseWriter, req *http.Request) {
+
+func (ts *Service) deleteConfigHandler(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["id"]
-	configs, ok := ts.Data[id]
-	if !ok {
+	version := mux.Vars(req)["version"]
+	configs, ok := ts.store.DeleteConfig(id, version)
+	if ok != nil {
 		err := errors.New("key not found")
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	delete(ts.Data, id)
 	renderJSON(w, configs)
 }
 
-func (ts *Servis) getAllHandler(w http.ResponseWriter, _ *http.Request) {
-	renderJSON(w, ts.Data)
+func (ts *Service) getAllConfigHandler(w http.ResponseWriter, _ *http.Request) {
+	allTasks, err := ts.store.GetAllConfig()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	renderJSON(w, allTasks)
+}
+func (ts *Service) updateConfigWithNewVersionHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["id"]
+
+	contentType := req.Header.Get("Content-Type")
+	mediatype, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if mediatype != "application/json" {
+		err := errors.New("expect application/json Content-Type")
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	rt, err := decodeBodyForConfig(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	conf, err := ts.store.UpdateConfigWithNewVersion(rt, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	renderJSON(w, conf)
 }
 
-func (ts *Servis) extendConfigGroupHandler(w http.ResponseWriter, req *http.Request) {
+//GROUP
+
+func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) {
+
+	contentType := req.Header.Get("Content-Type")
+	mediatype, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if mediatype != "application/json" {
+		err := errors.New("expect application/json Content-Type")
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	rt, err := decodeBodyForGroup(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	group, err := ts.store.CreateGroup(rt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	renderJSON(w, group)
+}
+func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["id"]
+	version := mux.Vars(req)["version"]
+	groups, ok := ts.store.GetGroup(id, version)
+	if ok != nil {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	renderJSON(w, groups)
+}
+func (ts *Service) getAllGroupHandler(w http.ResponseWriter, _ *http.Request) {
+	allTasks, err := ts.store.GetAllGroup()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	renderJSON(w, allTasks)
+}
+
+func (ts *Service) deleteGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["id"]
+	version := mux.Vars(req)["version"]
+	groups, ok := ts.store.DeleteGroup(id, version)
+	if ok != nil {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	renderJSON(w, groups)
+}
+func (ts *Service) updateGroupWithNewVersionHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["id"]
+
+	contentType := req.Header.Get("Content-Type")
+	mediatype, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if mediatype != "application/json" {
+		err := errors.New("expect application/json Content-Type")
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	rt, err := decodeBodyForGroup(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	group, err := ts.store.UpdateGroupWithNewVersion(rt, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	renderJSON(w, group)
+}
+
+func (ts *Service) extendConfigGroupHandler(w http.ResponseWriter, req *http.Request) {
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -79,26 +213,41 @@ func (ts *Servis) extendConfigGroupHandler(w http.ResponseWriter, req *http.Requ
 		return
 	}
 	id := mux.Vars(req)["id"]
-	configs, ok := ts.Data[id]
-	if !ok {
-		err := errors.New("config not found")
+	version := mux.Vars(req)["version"]
+	group, ok := ts.store.GetGroup(id, version)
+	if ok != nil {
+		err := errors.New("Group not found")
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	if len(configs) == 1 {
-		err := errors.New("only config groups can be extended")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 
-	rt, err := decodeBody(req.Body)
+	rt, err := decodeBodyForConfigs(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	for _, conf := range rt {
-		configs = append(configs, conf)
+	for _, config := range rt {
+		group.Configs = append(group.Configs, config.Entries)
 	}
-	renderJSON(w, configs)
+
+	updatedGroup, err := ts.store.UpdateGroup(group, id)
+	if err != nil {
+		return
+	}
+	renderJSON(w, updatedGroup)
+}
+
+func (ts *Service) getConfigsByLabelsHandler(w http.ResponseWriter, req *http.Request) {
+	ver := mux.Vars(req)["version"]
+	id := mux.Vars(req)["id"]
+
+	req.ParseForm()
+	params := url.Values.Encode(req.Form)
+	labels, err := ts.store.GetConfigsByLabels(id, ver, params)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	renderJSON(w, labels)
 }
