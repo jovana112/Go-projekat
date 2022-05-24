@@ -2,16 +2,38 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
+	cs "github.com/jovana112/Go-Projekat/projekat/configstore"
 	"io"
 	"net/http"
 )
 
-func decodeBody(r io.Reader) ([]*Config, error) {
+func decodeBodyForConfig(r io.Reader) (*cs.Config, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
-	var rt []*Config
+	var rt *cs.Config
+	if err := dec.Decode(&rt); err != nil {
+		return nil, err
+	}
+	return rt, nil
+}
+
+func decodeBodyForConfigs(r io.Reader) ([]*cs.Config, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt []*cs.Config
+	if err := dec.Decode(&rt); err != nil {
+		return nil, err
+	}
+	return rt, nil
+}
+
+func decodeBodyForGroup(r io.Reader) (*cs.Group, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt *cs.Group
 	if err := dec.Decode(&rt); err != nil {
 		return nil, err
 	}
@@ -27,8 +49,4 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
-}
-
-func createId() string {
-	return uuid.New().String()
 }
