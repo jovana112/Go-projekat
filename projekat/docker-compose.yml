@@ -1,0 +1,23 @@
+version: '3'
+services: 
+  consul:
+    image: consul
+    ports:
+      - "8500:8500"
+      - "8600:8600/tcp"
+      - "8600:8600/udp"
+    command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
+    volumes:
+      - C:/Users/Jovana/Desktop/consul:/consul/data
+  app:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - consul
+    environment:
+      - DB=consul
+      - DBPORT=8500
+volumes:
+  consul:
