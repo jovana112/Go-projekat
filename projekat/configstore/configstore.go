@@ -13,6 +13,28 @@ type ConfigStore struct {
 	cli *api.Client
 }
 
+func (cs *ConfigStore) CreateIdempotencyKey(id string) {
+	kv := cs.cli.KV()
+
+	sid := createNewIdempotencyKey(id)
+
+	data, _ := json.Marshal(true)
+
+	c := &api.KVPair{Key: sid, Value: data}
+	_, _ = kv.Put(c, nil)
+
+}
+func (cs *ConfigStore) IdempotencyKeyExists(id string) bool {
+	kv := cs.cli.KV()
+	key := createNewIdempotencyKey(id)
+	data, _, err := kv.Get(key, nil)
+
+	if err != nil || data == nil {
+		return false
+	}
+	return true
+}
+
 func CreateNewConfigStore() (*ConfigStore, error) {
 	db := os.Getenv("DB")
 	dbport := os.Getenv("DBPORT")
@@ -278,8 +300,7 @@ func (cs *ConfigStore) UpdateGroup(group *Group, id string) (*Group, error) {
 func (cs *ConfigStore) GetConfigsByLabels(id string, version string, params string) ([]map[string]string, error) {
 	kv := cs.cli.KV()
 
-	n := strings.Replace(params, "&", ";", -1)
-	n1 := strings.Replace(n, "=", ":", -1)
+	n1 := strings.Replace(params, "=", ":", -1)
 
 	labelkey := fmt.Sprintf(groupIdVersionLabel, id, version, n1)
 

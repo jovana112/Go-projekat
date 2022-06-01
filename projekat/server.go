@@ -7,6 +7,8 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"sort"
+	"strings"
 )
 
 type Service struct {
@@ -14,6 +16,18 @@ type Service struct {
 }
 
 func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsConfigPost.Inc()
+	idempotencyKey := req.Header.Get("Idempotency-key")
+	if ts.store.IdempotencyKeyExists(idempotencyKey) {
+		_, err := decodeBodyForConfig(req.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		renderJSON(w, "Successfully created")
+		return
+	}
 
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
@@ -34,16 +48,18 @@ func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	conf, err := ts.store.CreateConfig(rt)
+	_, err = ts.store.CreateConfig(rt)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	renderJSON(w, conf)
+	ts.store.CreateIdempotencyKey(idempotencyKey)
+	renderJSON(w, "Successfully created")
 }
 
 func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsConfigGetForId.Inc()
 	id := mux.Vars(req)["id"]
 	version := mux.Vars(req)["version"]
 	configs, ok := ts.store.GetConfig(id, version)
@@ -56,6 +72,7 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (ts *Service) deleteConfigHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsConfigDelete.Inc()
 	id := mux.Vars(req)["id"]
 	version := mux.Vars(req)["version"]
 	configs, ok := ts.store.DeleteConfig(id, version)
@@ -68,6 +85,7 @@ func (ts *Service) deleteConfigHandler(w http.ResponseWriter, req *http.Request)
 }
 
 func (ts *Service) getAllConfigHandler(w http.ResponseWriter, _ *http.Request) {
+	httpHitsConfigGet.Inc()
 	allTasks, err := ts.store.GetAllConfig()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -76,6 +94,7 @@ func (ts *Service) getAllConfigHandler(w http.ResponseWriter, _ *http.Request) {
 	renderJSON(w, allTasks)
 }
 func (ts *Service) updateConfigWithNewVersionHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsConfigUpdate.Inc()
 	id := mux.Vars(req)["id"]
 
 	contentType := req.Header.Get("Content-Type")
@@ -109,7 +128,18 @@ func (ts *Service) updateConfigWithNewVersionHandler(w http.ResponseWriter, req 
 //GROUP
 
 func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsGroupPost.Inc()
+	idempotencyKey := req.Header.Get("Idempotency-key")
+	if ts.store.IdempotencyKeyExists(idempotencyKey) {
+		_, err := decodeBodyForGroup(req.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
+		renderJSON(w, "Successfully created")
+		return
+	}
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -128,16 +158,16 @@ func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	group, err := ts.store.CreateGroup(rt)
+	_, err = ts.store.CreateGroup(rt)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	renderJSON(w, group)
+	ts.store.CreateIdempotencyKey(idempotencyKey)
+	renderJSON(w, "Successfully created")
 }
 func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsGroupGetForId.Inc()
 	id := mux.Vars(req)["id"]
 	version := mux.Vars(req)["version"]
 	groups, ok := ts.store.GetGroup(id, version)
@@ -149,6 +179,7 @@ func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
 	renderJSON(w, groups)
 }
 func (ts *Service) getAllGroupHandler(w http.ResponseWriter, _ *http.Request) {
+	httpHitsGroupGet.Inc()
 	allTasks, err := ts.store.GetAllGroup()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -158,6 +189,7 @@ func (ts *Service) getAllGroupHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (ts *Service) deleteGroupHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsGroupDelete.Inc()
 	id := mux.Vars(req)["id"]
 	version := mux.Vars(req)["version"]
 	groups, ok := ts.store.DeleteGroup(id, version)
@@ -169,6 +201,7 @@ func (ts *Service) deleteGroupHandler(w http.ResponseWriter, req *http.Request) 
 	renderJSON(w, groups)
 }
 func (ts *Service) updateGroupWithNewVersionHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsGroupUpdate.Inc()
 	id := mux.Vars(req)["id"]
 
 	contentType := req.Header.Get("Content-Type")
@@ -200,6 +233,7 @@ func (ts *Service) updateGroupWithNewVersionHandler(w http.ResponseWriter, req *
 }
 
 func (ts *Service) extendConfigGroupHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsGroupExtend.Inc()
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -239,12 +273,16 @@ func (ts *Service) extendConfigGroupHandler(w http.ResponseWriter, req *http.Req
 }
 
 func (ts *Service) getConfigsByLabelsHandler(w http.ResponseWriter, req *http.Request) {
+	httpHitsGroupSearchConfig.Inc()
 	ver := mux.Vars(req)["version"]
 	id := mux.Vars(req)["id"]
 
 	req.ParseForm()
 	params := url.Values.Encode(req.Form)
-	labels, err := ts.store.GetConfigsByLabels(id, ver, params)
+	split := strings.Split(params, "&")
+	sort.Strings(split)
+
+	labels, err := ts.store.GetConfigsByLabels(id, ver, strings.Join(split, ";"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

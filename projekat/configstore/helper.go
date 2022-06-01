@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	idempotencyKeys = "idempotencyKeys/%s"
 	configs         = "configs"
 	configId        = "configs/%s"
 	configIdVersion = "configs/%s/%s"
@@ -21,7 +22,9 @@ const (
 func createConfigsKey() string {
 	return configs
 }
-
+func createNewIdempotencyKey(id string) string {
+	return fmt.Sprintf(idempotencyKeys, id)
+}
 func createNewConfigWithVersionKey(version string) (string, string) {
 	id := uuid.New().String()
 	return fmt.Sprintf(configIdVersion, id, version), id

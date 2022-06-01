@@ -28,19 +28,20 @@ func main() {
 		store: store,
 	}
 
-	router.HandleFunc("/configs", server.createConfigHandler).Methods("POST")
-	router.HandleFunc("/configs", server.getAllConfigHandler).Methods("GET")
-	router.HandleFunc("/configs/{id}", server.updateConfigWithNewVersionHandler).Methods("PUT")
-	router.HandleFunc("/configs/{id}/{version}", server.getConfigHandler).Methods("GET")
-	router.HandleFunc("/configs/{id}/{version}", server.deleteConfigHandler).Methods("DELETE")
+	router.HandleFunc("/configs", count(server.createConfigHandler)).Methods("POST")
+	router.HandleFunc("/configs", count(server.getAllConfigHandler)).Methods("GET")
+	router.HandleFunc("/configs/{id}", count(server.updateConfigWithNewVersionHandler)).Methods("PUT")
+	router.HandleFunc("/configs/{id}/{version}", count(server.getConfigHandler)).Methods("GET")
+	router.HandleFunc("/configs/{id}/{version}", count(server.deleteConfigHandler)).Methods("DELETE")
 
-	router.HandleFunc("/groups", server.createGroupHandler).Methods("POST")
-	router.HandleFunc("/groups", server.getAllGroupHandler).Methods("GET")
-	router.HandleFunc("/groups/{id}", server.updateGroupWithNewVersionHandler).Methods("PUT")
-	router.HandleFunc("/groups/{id}/{version}", server.getGroupHandler).Methods("GET")
-	router.HandleFunc("/groups/{id}/{version}", server.deleteGroupHandler).Methods("DELETE")
-	router.HandleFunc("/groups/{id}/{version}", server.extendConfigGroupHandler).Methods("PATCH")
-	router.HandleFunc("/groups/{id}/{version}/configs", server.getConfigsByLabelsHandler).Methods("GET")
+	router.HandleFunc("/groups", count(server.createGroupHandler)).Methods("POST")
+	router.HandleFunc("/groups", count(server.getAllGroupHandler)).Methods("GET")
+	router.HandleFunc("/groups/{id}", count(server.updateGroupWithNewVersionHandler)).Methods("PUT")
+	router.HandleFunc("/groups/{id}/{version}", count(server.getGroupHandler)).Methods("GET")
+	router.HandleFunc("/groups/{id}/{version}", count(server.deleteGroupHandler)).Methods("DELETE")
+	router.HandleFunc("/groups/{id}/{version}", count(server.extendConfigGroupHandler)).Methods("PATCH")
+	router.HandleFunc("/groups/{id}/{version}/configs", count(server.getConfigsByLabelsHandler)).Methods("GET")
+	router.Path("/metrics").Handler(metricsHandler())
 
 	// start server
 	srv := &http.Server{Addr: "0.0.0.0:8000", Handler: router}

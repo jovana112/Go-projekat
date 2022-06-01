@@ -1,5 +1,5 @@
 version: '3'
-services: 
+services:
   consul:
     image: consul
     ports:
@@ -19,5 +19,14 @@ services:
     environment:
       - DB=consul
       - DBPORT=8500
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - ./prometheus-data:/prometheus
 volumes:
   consul:
+  prometheus-data:
+
